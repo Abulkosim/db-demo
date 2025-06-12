@@ -9,8 +9,8 @@ const app = express();
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.json({status: "ok"});
-}); 
+  res.json({ status: "ok" });
+});
 
 app.post("/users", async (req, res) => {
   const { name, email } = req.body;
@@ -22,8 +22,14 @@ app.post("/users", async (req, res) => {
 });
 
 app.get("/users", async (req, res) => {
-  const result = await db.query("SELECT * FROM users");
-  res.json(result.rows);
+  const { active } = req.query;
+  if (active === 'true') {
+    const result = await db.query("SELECT * FROM users WHERE is_active = true ORDER BY created_at DESC");
+    res.json(result.rows);
+  } else {
+    const result = await db.query("SELECT * FROM users");
+    res.json(result.rows);
+  }
 });
 
 app.get("/users/:id", async (req, res) => {
