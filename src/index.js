@@ -38,6 +38,22 @@ app.get("/users/:id", async (req, res) => {
   res.json(result.rows[0]);
 });
 
+app.get("/users/:id/with-profile", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userResult = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+    const profileResult = await db.query("SELECT * FROM user_profiles WHERE user_id = $1", [id]);
+    const preferencesResult = await db.query("SELECT * FROM user_preferences WHERE user_id = $1", [id]);
+
+    const user = userResult.rows[0];
+    const profile = profileResult.rows[0];
+    const preferences = preferencesResult.rows[0];
+    res.json({ user, profile, preferences });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to get user with profile", details: error.message });
+  }
+});
+
 app.delete("/users/:id", async (req, res) => {
   const { id } = req.params;
   await db.query("DELETE FROM users WHERE id = $1", [id]);
@@ -46,7 +62,7 @@ app.delete("/users/:id", async (req, res) => {
 
 app.post("/users/complete", async (req, res) => {
   const { name, email, bio, theme, language = "en" } = req.body;
-  
+
   try {
     await db.query("BEGIN");
 
@@ -60,12 +76,12 @@ app.post("/users/complete", async (req, res) => {
     const preferences = preferencesResult.rows[0];
 
     await db.query("COMMIT");
-    
-    res.status(201).json({ 
-      user, 
-      profile, 
-      preferences, 
-      message: "User completed successfully" 
+
+    res.status(201).json({
+      user,
+      profile,
+      preferences,
+      message: "User completed successfully"
     });
   } catch (error) {
     await db.query("ROLLBACK");
@@ -82,9 +98,9 @@ app.get("/debug/tables", async (req, res) => {
       FROM information_schema.tables 
       WHERE table_schema = 'public'
     `);
-    res.json({ 
+    res.json({
       database: dbInfo.rows[0],
-      tables: result.rows 
+      tables: result.rows
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
