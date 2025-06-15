@@ -44,6 +44,53 @@ app.delete("/users/:id", async (req, res) => {
   res.json({ message: "User deleted" });
 });
 
+app.post("/users/complete", async (req, res) => {
+  const { name, email, bio, theme, language = "en" } = req.body;
+  
+  try {
+    await db.query("BEGIN");
+
+    const userResult = await db.query("INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *", [name, email]);
+    const user = userResult.rows[0];
+
+    const profileResult = await db.query("INSERT INTO user_profiles (user_id, bio) VALUES ($1, $2) RETURNING *", [user.id, bio]);
+    const profile = profileResult.rows[0];
+
+    const preferencesResult = await db.query("INSERT INTO user_preferences (user_id, theme, language) VALUES ($1, $2, $3) RETURNING *", [user.id, theme, language]);
+    const preferences = preferencesResult.rows[0];
+
+    await db.query("COMMIT");
+    
+    res.status(201).json({ 
+      user, 
+      profile, 
+      preferences, 
+      message: "User completed successfully" 
+    });
+  } catch (error) {
+    await db.query("ROLLBACK");
+    console.error("Error completing user:", error);
+    res.status(500).json({ error: "Failed to complete user", details: error.message });
+  }
+});
+
+app.get("/debug/tables", async (req, res) => {
+  try {
+    const dbInfo = await db.query("SELECT current_database(), current_user");
+    const result = await db.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    res.json({ 
+      database: dbInfo.rows[0],
+      tables: result.rows 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
